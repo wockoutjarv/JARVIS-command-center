@@ -3,4 +3,119 @@
 :root{color-scheme:dark;--bg:#070b16;--panel:#111b30;--edge:#263b5c;--cyan:#43e8ff;--muted:#9aacc6}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 100% 0,#172b53,var(--bg) 55%);color:#eaf5ff;font:15px system-ui,-apple-system,sans-serif;min-height:100vh}.wrap{max-width:960px;margin:auto;padding:22px 16px 95px}header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:22px}h1{font-size:25px;letter-spacing:4px;margin:0;color:var(--cyan)}small,.muted{color:var(--muted)}.pill{border:1px solid #2d5965;border-radius:30px;padding:7px 10px;color:#a3ffca;font-size:12px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.panel{background:linear-gradient(140deg,#15223b,#0d1425);border:1px solid var(--edge);border-radius:16px;padding:17px;margin-bottom:14px;box-shadow:0 8px 30px #0004}.metric{font-size:25px;color:var(--cyan);font-weight:750}.label{font-size:12px;color:var(--muted);margin-top:6px}h2{font-size:18px;margin:0 0 13px}textarea,input{width:100%;border:1px solid #385173;background:#090f1d;color:#fff;border-radius:10px;padding:12px;font:inherit}textarea{min-height:108px;resize:vertical}button{border:1px solid #37627c;background:#172b43;color:#effaff;border-radius:10px;padding:11px 14px;font:inherit;cursor:pointer}button.primary{background:#087f9e;border-color:#22d5f4;color:#fff;font-weight:700}button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--cyan)}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}.nav{display:flex;gap:6px;overflow-x:auto;margin-bottom:16px}.nav button{white-space:nowrap;font-size:13px;padding:10px}.nav button[aria-selected=true]{background:#0d718e;border-color:var(--cyan)}section[hidden]{display:none}.entry{padding:12px 0;border-bottom:1px solid #293c56;overflow-wrap:anywhere}.entry:last-child{border:0}.stamp{font-size:11px;color:var(--muted);margin-top:5px}.notice{border-left:3px solid #f7c35d;padding:10px 12px;background:#352a19;color:#ffe5ab;border-radius:4px;margin:12px 0}.game{height:290px;border:1px solid #25536d;border-radius:12px;background:radial-gradient(circle at center,#162e53,#050b18);position:relative;overflow:hidden;touch-action:manipulation}.enemy{position:absolute;width:42px;height:42px;border:2px solid #ff547c;border-radius:12px;background:#ff547c44;color:#fff;font-size:21px;display:grid;place-items:center;box-shadow:0 0 20px #f47a9c66}.footer{font-size:12px;color:var(--muted);text-align:center;margin-top:24px}@media(min-width:700px){.grid{grid-template-columns:repeat(4,1fr)}}
 </style></head><body><div class="wrap"><header><div><h1>J.A.R.V.I.S.</h1><small>PHONE-FIRST COMMAND CENTER · v1.0</small></div><span class="pill" id="status">LOCAL MODE</span></header><div class="grid"><div class="panel"><div class="metric" id="count">0</div><div class="label">LOCAL COMMANDS</div></div><div class="panel"><div class="metric" id="pending">0</div><div class="label">PENDING APPROVALS</div></div><div class="panel"><div class="metric" id="score">0</div><div class="label">DEFENDER SCORE</div></div><div class="panel"><div class="metric">OFF</div><div class="label">REMOTE EXECUTION</div></div></div><nav class="nav" aria-label="Sections"><button aria-selected="true" data-tab="command">Command</button><button aria-selected="false" data-tab="history">History</button><button aria-selected="false" data-tab="approvals">Approvals</button><button aria-selected="false" data-tab="defender">Neon Defender</button><button aria-selected="false" data-tab="settings">Settings</button></nav><section id="command"><div class="panel"><h2>Command Console</h2><p class="muted">Draft and record a command. Commands are not transmitted or executed in this version.</p><textarea id="commandText" maxlength="2000" placeholder="JARVIS, prepare a plan to..."></textarea><div class="actions"><button class="primary" id="saveCommand">Save to History</button><button id="approvalCommand">Request Local Approval</button></div><div id="commandMsg" class="stamp" role="status"></div></div></section><section id="history" hidden><div class="panel"><h2>History</h2><p class="muted">Stored only in this browser on this device. This is not yet PostgreSQL-backed history.</p><div id="historyItems"></div><div class="actions"><button id="exportHistory">Export JSON</button><button id="clearHistory">Clear Local History</button></div></div></section><section id="approvals" hidden><div class="panel"><h2>Approval Queue</h2><div class="notice">Approvals are demonstrations only. Approving does not run an external action.</div><div id="approvalItems"></div></div></section><section id="defender" hidden><div class="panel"><h2>Neon Defender</h2><p class="muted">Tap the glowing target to earn points. A small standalone mini-game.</p><div class="game" id="arena"><button class="enemy" id="enemy" aria-label="Hit target">✦</button></div><div class="actions"><button id="resetScore">Reset Score</button></div></div></section><section id="settings" hidden><div class="panel"><h2>Cloud Connection</h2><label for="endpoint">Render backend URL (public address only)</label><input id="endpoint" value="https://jarvis-cloud-backend-460k.onrender.com" readonly><div class="actions"><button id="checkHealth">Check Public Health</button></div><p id="healthResult" class="muted" role="status">Not checked.</p><div class="notice">Never enter your JARVIS_TOKEN, database URL, or OpenAI API key in this public website. Browser authentication and cloud History require a separate secure integration.</div></div></section><div class="footer">JARVIS UI prototype · Local-only commands · No autonomous execution</div></div><script>
 (()=>{'use strict';const $=id=>document.getElementById(id);const key='jarvis_ui_v1';let data;try{data=JSON.parse(localStorage.getItem(key))||{history:[],approvals:[],score:0}}catch{data={history:[],approvals:[],score:0}};if(!Array.isArray(data.history))data.history=[];if(!Array.isArray(data.approvals))data.approvals=[];if(!Number.isFinite(data.score))data.score=0;const persist=()=>{try{localStorage.setItem(key,JSON.stringify(data))}catch{alert('Browser storage unavailable. Export your history to keep a copy.')}};const stamp=()=>new Date().toLocaleString();const make=(tag,txt,cls)=>{const e=document.createElement(tag);if(txt!==undefined)e.textContent=txt;if(cls)e.className=cls;return e};function render(){ $('count').textContent=data.history.length;$('pending').textContent=data.approvals.filter(x=>x.status==='pending').length;$('score').textContent=data.score;const h=$('historyItems');h.replaceChildren();if(!data.history.length)h.append(make('p','No commands recorded yet.','muted'));data.history.slice().reverse().forEach(x=>{const d=make('div',undefined,'entry');d.append(make('div',x.text),make('div',`${x.time} · ${x.type}`,'stamp'));h.append(d)});const a=$('approvalItems');a.replaceChildren();const pending=data.approvals.filter(x=>x.status==='pending');if(!pending.length)a.append(make('p','No pending requests.','muted'));pending.forEach(x=>{const d=make('div',undefined,'entry');d.append(make('div',x.text),make('div',x.time,'stamp'));const row=make('div',undefined,'actions');for(const [label,status] of [['Approve (demo)','approved'],['Reject','rejected']]){const b=make('button',label);b.addEventListener('click',()=>{x.status=status;data.history.push({text:x.text,type:`Local ${status} — no execution`,time:stamp()});persist();render()});row.append(b)}d.append(row);a.append(d)})}function add(type){const text=$('commandText').value.trim();if(!text){$('commandMsg').textContent='Enter a command first.';return}if(type==='approval'){data.approvals.push({id:Date.now()+'-'+Math.random(),text,time:stamp(),status:'pending'})}else{data.history.push({text,type:'Saved locally — not executed',time:stamp()})}persist();render();$('commandMsg').textContent=type==='approval'?'Added to local approval queue.':'Saved locally.';$('commandText').value=''}$('saveCommand').addEventListener('click',()=>add('history'));$('approvalCommand').addEventListener('click',()=>add('approval'));document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-tab]').forEach(n=>n.setAttribute('aria-selected',String(n===b)));document.querySelectorAll('section').forEach(s=>s.hidden=s.id!==b.dataset.tab);render()}));$('clearHistory').addEventListener('click',()=>{if(confirm('Delete local command history from this browser?')){data.history=[];persist();render()}});$('exportHistory').addEventListener('click',()=>{const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='jarvis-local-backup.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});$('checkHealth').addEventListener('click',async()=>{$('healthResult').textContent='Checking...';try{const r=await fetch($('endpoint').value+'/health',{method:'GET'});if(!r.ok)throw Error('HTTP '+r.status);const body=await r.json();$('healthResult').textContent=body.ok?'Backend responding: '+(body.mode||'unknown mode'):'Unexpected health response'}catch(e){$('healthResult').textContent='Browser request failed (possibly CORS or sleeping instance): '+e.message}});function place(){const arena=$('arena'),enemy=$('enemy');enemy.style.left=Math.floor(Math.random()*Math.max(1,arena.clientWidth-56))+'px';enemy.style.top=Math.floor(Math.random()*Math.max(1,arena.clientHeight-56))+'px'}$('enemy').addEventListener('click',()=>{data.score++;persist();render();place()});$('resetScore').addEventListener('click',()=>{data.score=0;persist();render();place()});window.addEventListener('resize',place);render();place()})();
+</script><script>
+(() => {
+  const consolePanel = document.querySelector('#command .panel');
+  const command = document.getElementById('commandText');
+  const endpoint = document.getElementById('endpoint').value;
+  const panel = document.createElement('div');
+  panel.className = 'panel';
+  panel.innerHTML = `
+    <h2>Cloud Queue</h2>
+    <form id="cloudSignIn">
+      <label for="cloudPassphrase">Dashboard passphrase</label>
+      <input id="cloudPassphrase" type="password"
+             autocomplete="current-password" required maxlength="256">
+      <div class="actions">
+        <button type="submit">Sign in</button>
+      </div>
+    </form>
+    <div class="actions">
+      <button id="sendCloud" type="button" disabled>Send to Cloud</button>
+    </div>
+    <p id="cloudResult" class="muted" role="status">Signed out.</p>
+  `;
+  consolePanel.after(panel);
+  consolePanel.querySelector('p.muted').textContent =
+    'Save a draft locally or sign in below to send it to the cloud queue.';
+  document.querySelector('.footer').textContent =
+    'JARVIS Command Center · Cloud queue only · Remote execution off';
+
+  const form = panel.querySelector('#cloudSignIn');
+  const password = panel.querySelector('#cloudPassphrase');
+  const signIn = form.querySelector('button');
+  const send = panel.querySelector('#sendCloud');
+  const result = panel.querySelector('#cloudResult');
+  let session = '';
+  let expiryTimer;
+
+  async function post(path, body, sessionToken) {
+    const headers = {'Content-Type': 'application/json'};
+    if (sessionToken) headers.Authorization = `Dashboard ${sessionToken}`;
+    const response = await fetch(endpoint + path, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body)
+    });
+    if (!response.ok) {
+      const error = new Error(`Render returned HTTP ${response.status}.`);
+      error.status = response.status;
+      throw error;
+    }
+    return response.json();
+  }
+
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    signIn.disabled = true;
+    send.disabled = true;
+    clearTimeout(expiryTimer);
+    session = '';
+    const passphrase = password.value;
+    password.value = '';
+    result.textContent = 'Signing in…';
+    try {
+      const data = await post('/v1/dashboard/session', {passphrase});
+      if (!data.session_token || !(data.expires_in > 0)) {
+        throw new Error('Render did not return a valid session.');
+      }
+      session = data.session_token;
+      result.textContent = 'Signed in. Enter a command above.';
+      expiryTimer = setTimeout(() => {
+        session = '';
+        send.disabled = true;
+        result.textContent = 'Session expired. Sign in again.';
+      }, data.expires_in * 1000);
+    } catch (error) {
+      result.textContent = error.status === 401
+        ? 'Incorrect dashboard passphrase.'
+        : `Sign-in failed. ${error.message}`;
+    } finally {
+      signIn.disabled = false;
+      send.disabled = !session;
+    }
+  });
+
+  send.addEventListener('click', async () => {
+    const text = command.value.trim();
+    if (text.length < 3) {
+      result.textContent = 'Enter a command with at least 3 characters.';
+      return;
+    }
+    send.disabled = true;
+    signIn.disabled = true;
+    result.textContent = 'Sending to the cloud queue…';
+    try {
+      const data = await post('/v1/tasks', {command: text}, session);
+      if (data.status !== 'queued' || !data.id) {
+        throw new Error('Render did not confirm a task ID.');
+      }
+      result.textContent = `Queued. Task ID: ${data.id}`;
+    } catch (error) {
+      if (error.status === 401) {
+        session = '';
+        clearTimeout(expiryTimer);
+        result.textContent = 'Session expired or invalid. Sign in again.';
+      } else if (error.status === 423) {
+        result.textContent = 'Emergency stop is active.';
+      } else {
+        result.textContent =
+          `Queue submission could not be confirmed. ${error.message}`;
+      }
+    } finally {
+      signIn.disabled = false;
+      send.disabled = !session;
+    }
+  });
+})();
 </script></body></html>
