@@ -97,10 +97,16 @@
     result.textContent = 'Sending to the cloud queue…';
     try {
       const data = await post('/v1/tasks', {command: text}, session);
-      if (data.status !== 'queued' || !data.id) {
+      if (!data.id) {
         throw new Error('Render did not confirm a task ID.');
       }
-      result.textContent = `Queued. Task ID: ${data.id}`;
+      if (data.status === 'completed' && typeof data.result === 'string') {
+        result.textContent = `Completed. ${data.result} Task ID: ${data.id}`;
+      } else if (data.status === 'queued') {
+        result.textContent = `Queued. Task ID: ${data.id}`;
+      } else {
+        throw new Error('Render returned an unexpected task status.');
+      }
     } catch (error) {
       if (error.status === 401) {
         session = '';
