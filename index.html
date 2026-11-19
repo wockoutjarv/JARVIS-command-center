@@ -152,6 +152,7 @@ function setupVoiceCall(command, cloudSend, sendCommand) {
     <div class="actions">
       <button type="button" id="voiceMic">Speak</button>
       <button type="button" id="voiceSend">Send to Cloud</button>
+      <button type="button" id="voiceReplay">Play reply</button>
       <button type="button" id="voiceMute" aria-pressed="false">Mute voice</button>
       <button type="button" id="voiceEnd">End call</button>
     </div>
@@ -169,7 +170,9 @@ function setupVoiceCall(command, cloudSend, sendCommand) {
   let callSession = 0;
   let muted = false;
 
+  let lastReply = "";
   function say(message) {
+    lastReply = message;
     reply.textContent = message;
     if (!speech || !window.SpeechSynthesisUtterance || muted) return;
     speech.cancel();
@@ -179,8 +182,19 @@ function setupVoiceCall(command, cloudSend, sendCommand) {
     line.lang = 'en-GB';
     line.rate = 0.91;
     line.pitch = 0.92;
+    speech.resume();
     speech.speak(line);
   }
+
+  const replay = call.querySelector('#voiceReplay');
+  replay.disabled = !speech || !window.SpeechSynthesisUtterance;
+  replay.addEventListener('click', () => {
+    if (muted) mute.click();
+    stopMic();
+    const status = reply.textContent;
+    say(lastReply);
+    reply.textContent = status;
+  });
 
   function stopMic() {
     const active = recognition;
@@ -216,7 +230,7 @@ function setupVoiceCall(command, cloudSend, sendCommand) {
       return;
     }
     if (!Recognition) {
-      reply.textContent = 'Tap the command box and use your keyboard microphone, or type your request.';
+      reply.textContent = 'This browser does not offer in-page speech recognition. Open the dashboard directly in Safari to try Speak, or use keyboard dictation here.';
       transcript.focus();
       return;
     }
@@ -224,16 +238,22 @@ function setupVoiceCall(command, cloudSend, sendCommand) {
     speech?.cancel();
     const active = new Recognition();
     recognition = active;
-    active.lang = 'en-GB';
+    active.lang = navigator.language || 'en-US';
     active.onresult = event => {
       if (recognition !== active || !call.open) return;
       const text = event.results[0]?.[0]?.transcript?.trim();
       if (text) transcript.value = text.slice(0, 2000);
       reply.textContent = text ? 'Review your command, then tap Send to Cloud.' : 'I did not catch that. Please try again.';
     };
-    active.onerror = () => {
+    active.onerror = event => {
       if (recognition !== active) return;
-      reply.textContent = 'Voice input is unavailable. Try your keyboard microphone or type your request.';
+      const errors = {
+        'not-allowed': 'Microphone or speech recognition permission was denied. Check permissions for this site in Safari.',
+        'audio-capture': 'The browser could not capture microphone audio. Check the selected microphone and try again.',
+        'no-speech': 'No speech was detected. Tap Speak and try again.',
+        'network': 'The speech recognition service could not connect. Try again.'
+      };
+      reply.textContent = errors[event.error] || 'Speech recognition stopped: ' + event.error;
     };
     active.onend = () => {
       if (recognition !== active) return;
